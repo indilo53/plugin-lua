@@ -10,7 +10,7 @@
     "src"
   ],
   "dependencies": {
-    "luaparse": "0.2.1"
+    "luaparse": "^0.3.0"
   },
   "devDependencies": {
     "cross-env": "^5.2.0",
@@ -20,8 +20,8 @@
     "eslint-plugin-prettier": "2.6.0",
     "jest": "22.4.3",
     "jest-runner-eslint": "0.4.0",
-    "prettier-from-github": "prettier/prettier#4c464133ac37a966c792cacc660853d74c776841",
-    "prettier": "1.13.7"
+    "prettier": "^2.0.5",
+    "prettier-from-github": "prettier/prettier#4c464133ac37a966c792cacc660853d74c776841"
   },
   "peerDependencies": {
     "prettier": ">=1.0.0"

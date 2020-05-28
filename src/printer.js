@@ -20,6 +20,37 @@ const { makeString, isNextLineEmpty } = require("prettier").util;
 const { isValidIdentifier, isExpression } = require("./util");
 const { printDanglingComments, isDanglingComment } = require("./comments");
 
+function locEnd(node) {
+  // This function is copied from the code that used to live in the main prettier repo.
+
+  const endNode = node.nodes && utilShared.getLast(node.nodes);
+  if (endNode && node.source && !node.source.end) {
+    node = endNode;
+  }
+
+  let loc;
+  if (node.range) {
+    loc = node.range[1];
+  } else if (typeof node.end === "number") {
+    loc = node.end;
+  } else if (node.source) {
+    loc = utilShared.lineColumnToIndex(node.source.end, node.source.input.css);
+  }
+
+  if (node.__location) {
+    return node.__location.endOffset;
+  }
+  if (node.typeAnnotation) {
+    return Math.max(loc, locEnd(node.typeAnnotation));
+  }
+
+  if (node.loc && !loc) {
+    return node.loc.end;
+  }
+
+  return loc || 0;
+}
+
 function printNoParens(path, options, print) {
   const node = path.getValue();
 
@@ -70,9 +101,7 @@ function printNoParens(path, options, print) {
       return node.name;
     }
     case "FunctionDeclaration": {
-      const isEmpty =
-        node.body.length === 0 &&
-        (!node.comments || node.comments.length === 0);
+      const isEmpty = (node.body.length === 0) && (!node.comments || (node.comments.length === 0));
       const isAnonymous = !node.identifier;
       const hasParams = node.parameters.length > 0;
 
@@ -95,7 +124,7 @@ function printNoParens(path, options, print) {
         ")",
         printIndentedBody(path, options, print),
         isAnonymous && isEmpty ? " " : hardline,
-        "end",
+        "end", softline,
       ]);
     }
     case "CallStatement": {
@@ -225,7 +254,7 @@ function printNoParens(path, options, print) {
       return concat([
         printedClauses,
         willBreak(printedClauses) ? hardline : " ",
-        "end",
+        "end", softline,
       ]);
     }
 
@@ -290,7 +319,7 @@ function printNoParens(path, options, print) {
         "do",
         printIndentedBody(path, options, print),
         hardline,
-        "end",
+        "end", softline,
       ]);
     }
     case "ForNumericStatement": {
@@ -306,7 +335,7 @@ function printNoParens(path, options, print) {
         " do",
         printIndentedBody(path, options, print),
         hardline,
-        "end",
+        "end", softline,
       ]);
     }
 
@@ -315,7 +344,7 @@ function printNoParens(path, options, print) {
         "do",
         printIndentedBody(path, options, print),
         hardline,
-        "end",
+        "end", softline,
       ]);
     }
 
@@ -326,7 +355,7 @@ function printNoParens(path, options, print) {
         " do",
         printIndentedBody(path, options, print),
         hardline,
-        "end",
+        "end", softline,
       ]);
     }
 
@@ -396,8 +425,9 @@ function printBody(path, options, print) {
     const parts = [];
 
     parts.push(statementPrinted);
-
+    
     const nextStatement = node.body[index + 1];
+
     if (
       nextStatement &&
       couldBeCallExpressionBase(getRightmostNode(statement, node)) &&
@@ -406,20 +436,18 @@ function printBody(path, options, print) {
       parts.push(";");
     }
 
-    if (
-      isNextLineEmpty(text, statement, options) &&
-      !isLastStatement(statementPath)
-    ) {
+    if(nextStatement && (nextStatement.type !== statement.type))
       parts.push(hardline);
-    }
 
     printed.push(concat(parts));
   }, "body");
 
   return group(
     concat([
+      hardline,
       join(hardline, printed),
       printDanglingComments(path, options, /* sameIndent */ true),
+      hardline
     ])
   );
 }
@@ -614,7 +642,7 @@ function printArgumentsList(path, options, print) {
 
     if (index === lastArgIndex) {
       // do nothing
-    } else if (isNextLineEmpty(options.originalText, arg, options)) {
+    } else if (isNextLineEmpty(options.originalText, arg, locEnd)) {
       if (index === 0) {
         hasEmptyLineFollowingFirstArg = true;
       }
